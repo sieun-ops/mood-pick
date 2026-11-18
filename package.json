@@ -1,0 +1,13 @@
+{
+  "name": "mood-pick",
+  "version": "1.0.0",
+  "private": true,
+  "description": "기분과 상황을 넣으면 AI가 노래와 맛집(메뉴)을 추천하는 서비스",
+  "type": "module",
+  "scripts": {
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

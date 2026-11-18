@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>무드픽 · 기분 따라 노래와 맛집</title>
+  <meta name="description" content="지금 기분과 상황을 적으면 AI가 노래 3곡과 먹을 것 3가지를 골라 줘요." />
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
+  <style>
+    :root {
+      --bg: #faf7f2; --card: #fff; --ink: #1f1d1a; --muted: #6b665e; --line: #e8e2d8;
+      --accent: #e8590c; --accent-ink: #fff; --soft: #fff1e6; --err: #c92a2a; --err-bg: #fff5f5;
+      --radius: 16px;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: Pretendard, system-ui, sans-serif; background: var(--bg); color: var(--ink); line-height: 1.55; }
+    main { max-width: 720px; margin: 0 auto; padding: 32px 20px 64px; }
+    header h1 { font-size: clamp(28px, 6vw, 40px); margin: 0 0 6px; letter-spacing: -0.02em; }
+    header p { margin: 0 0 28px; color: var(--muted); }
+    form, .panel { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 22px; }
+    fieldset { border: 0; padding: 0; margin: 0 0 20px; }
+    legend, label.title { display: block; font-weight: 700; margin-bottom: 10px; }
+    .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+    .chips input { position: absolute; opacity: 0; pointer-events: none; }
+    .chips label { padding: 8px 14px; border: 1px solid var(--line); border-radius: 999px; cursor: pointer; background: #fff; user-select: none; transition: background .15s, border-color .15s; }
+    .chips input:checked + label { background: var(--soft); border-color: var(--accent); color: var(--accent); font-weight: 700; }
+    .chips input:focus-visible + label { outline: 3px solid var(--accent); outline-offset: 2px; }
+    input[type=text], textarea { width: 100%; font: inherit; padding: 12px 14px; border: 1px solid var(--line); border-radius: 12px; background: #fff; }
+    input[type=text]:focus-visible, textarea:focus-visible { outline: 3px solid var(--accent); outline-offset: 1px; border-color: var(--accent); }
+    textarea { min-height: 96px; resize: vertical; }
+    .hint { font-size: 13px; color: var(--muted); margin-top: 6px; display: flex; justify-content: space-between; gap: 12px; }
+    .notice { font-size: 13px; color: var(--muted); background: #f6f3ee; border-radius: 10px; padding: 10px 12px; margin: 0 0 16px; }
+    button { font: inherit; font-weight: 700; border: 0; border-radius: 12px; padding: 14px 18px; cursor: pointer; }
+    .primary { width: 100%; background: var(--accent); color: var(--accent-ink); font-size: 17px; }
+    .primary:disabled { opacity: .55; cursor: progress; }
+    button:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
+    #status { margin: 20px 0 0; min-height: 1px; }
+    .loading { display: flex; align-items: center; gap: 10px; color: var(--muted); }
+    .spinner { width: 18px; height: 18px; border: 3px solid var(--line); border-top-color: var(--accent); border-radius: 50%; animation: spin .8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .error { background: var(--err-bg); color: var(--err); border: 1px solid #ffc9c9; border-radius: 12px; padding: 14px; }
+    .error button { margin-top: 10px; background: #fff; color: var(--err); border: 1px solid #ffc9c9; padding: 8px 14px; }
+    #result { display: grid; gap: 16px; margin-top: 20px; }
+    .panel h2 { margin: 0 0 12px; font-size: 20px; }
+    .panel ol { margin: 0; padding: 0; list-style: none; display: grid; gap: 10px; }
+    .panel li a { display: block; padding: 12px 14px; border: 1px solid var(--line); border-radius: 12px; color: inherit; text-decoration: none; transition: border-color .15s, background .15s; }
+    .panel li a:hover { border-color: var(--accent); background: var(--soft); }
+    .panel li a:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+    .name { font-weight: 700; }
+    .sub { color: var(--muted); font-size: 14px; }
+    .why { font-size: 14px; margin-top: 2px; }
+    .go { font-size: 13px; color: var(--accent); margin-top: 4px; }
+    footer { margin-top: 28px; font-size: 13px; color: var(--muted); text-align: center; }
+    .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+    @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+  </style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>🎧🍜 무드픽</h1>
+    <p>지금 기분과 상황을 적으면, AI가 어울리는 노래 3곡과 먹을 것 3가지를 골라 줘요.</p>
+  </header>
+
+  <form id="form" novalidate>
+    <fieldset>
+      <legend>지금 기분은?</legend>
+      <div class="chips" id="moods"></div>
+    </fieldset>
+
+    <div style="margin-bottom:20px">
+      <label class="title" for="situation">어떤 상황이에요? <span class="sub">(선택)</span></label>
+      <textarea id="situation" maxlength="300" placeholder="예: 시험 끝나고 친구랑 저녁 먹으러 가는 길, 비가 와서 좀 처져요"></textarea>
+      <div class="hint"><span>이름·연락처·학번은 적지 마세요.</span><span id="count">0 / 300</span></div>
+    </div>
+
+    <div style="margin-bottom:20px">
+      <label class="title" for="area">어느 동네에서 먹을까요? <span class="sub">(선택)</span></label>
+      <input type="text" id="area" maxlength="30" placeholder="예: 이문동, 회기역" autocomplete="off" />
+    </div>
+
+    <p class="notice">ⓘ 적은 기분·상황은 추천을 위해 AI(오픈하사 gemma-4-31b)에 보내지고, 저장하지 않아요. AI 추천은 틀릴 수 있어요.</p>
+
+    <button class="primary" id="go" type="submit">AI 추천 받기</button>
+  </form>
+
+  <div id="status" role="status" aria-live="polite"></div>
+  <section id="result" aria-live="polite"></section>
+
+  <footer>노래는 유튜브 검색, 맛집은 네이버 지도 검색으로 연결돼요.</footer>
+</main>
+
+<script>
+  const MOODS = ["😊 신나요", "😌 평온해요", "😢 우울해요", "😤 화나요", "😩 지쳤어요", "🥰 설레요", "😰 불안해요", "🤔 심심해요"];
+  const moodsEl = document.getElementById("moods");
+  MOODS.forEach((m, i) => {
+    const id = "mood" + i;
+    moodsEl.insertAdjacentHTML("beforeend",
+      `<input type="radio" name="mood" id="${id}" value="${m}"${i === 0 ? " checked" : ""}><label for="${id}">${m}</label>`);
+  });
+
+  const form = document.getElementById("form");
+  const btn = document.getElementById("go");
+  const statusEl = document.getElementById("status");
+  const resultEl = document.getElementById("result");
+  const situation = document.getElementById("situation");
+  const count = document.getElementById("count");
+
+  situation.addEventListener("input", () => { count.textContent = `${situation.value.length} / 300`; });
+
+  const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+  function showError(message) {
+    statusEl.innerHTML = `<div class="error"><strong>추천을 받지 못했어요.</strong><br>${esc(message)}<br><button type="button" id="retry">다시 시도</button></div>`;
+    document.getElementById("retry").addEventListener("click", () => form.requestSubmit());
+  }
+
+  function render(data) {
+    const songs = data.songs.map((s) => `
+      <li><a href="${esc(s.link)}" target="_blank" rel="noopener">
+        <div class="name">${esc(s.title)} <span class="sub">— ${esc(s.artist)}</span></div>
+        <div class="why">${esc(s.why)}</div><div class="go">유튜브에서 듣기 ↗</div></a></li>`).join("");
+    const foods = data.foods.map((f) => `
+      <li><a href="${esc(f.link)}" target="_blank" rel="noopener">
+        <div class="name">${esc(f.menu)}</div>
+        <div class="why">${esc(f.why)}</div><div class="go">지도에서 맛집 찾기 ↗</div></a></li>`).join("");
+    resultEl.innerHTML = `
+      <div class="panel"><h2>🎵 지금 들을 노래</h2><ol>${songs}</ol></div>
+      <div class="panel"><h2>🍽️ 지금 먹을 것</h2><ol>${foods}</ol></div>`;
+  }
+
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    if (btn.disabled) return; // 연타 막기
+    const mood = form.querySelector("input[name=mood]:checked")?.value || "";
+    const body = { mood, situation: situation.value.trim(), area: document.getElementById("area").value.trim() };
+
+    btn.disabled = true;
+    btn.textContent = "추천 고르는 중…";
+    resultEl.innerHTML = "";
+    statusEl.innerHTML = `<div class="loading"><span class="spinner" aria-hidden="true"></span>AI가 노래와 메뉴를 고르고 있어요. 최대 20초 걸려요.</div>`;
+
+    try {
+      const res = await fetch("/api/recommend", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        showError(data.error || `오류가 났어요 (${res.status}). 다시 시도해 주세요.`);
+        return;
+      }
+      statusEl.innerHTML = `<span class="sr-only">추천이 도착했어요.</span>`;
+      render(data);
+    } catch {
+      showError("인터넷 연결을 확인하고 다시 시도해 주세요.");
+    } finally {
+      btn.disabled = false;
+      btn.textContent = "AI 추천 받기";
+    }
+  });
+</script>
+</body>
+</html>
