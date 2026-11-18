@@ -3,7 +3,7 @@
 지금 **기분**과 **상황**을 적으면, AI가 어울리는 **노래 3곡**과 **먹을 것 3가지**를 골라 주는 서비스입니다.
 기술개발연구프로젝트 12주차 「내 서비스에 AI 넣기」 과제.
 
-- 운영 주소: `https://<프로젝트>.vercel.app` (배포 후 적기)
+- 운영 주소: https://mood-pick-six.vercel.app
 - AI: 오픈하사(Open HASA) `gemma-4-31b`, OpenAI 호환 `https://open.hasa.re.kr/v1/chat/completions`
 
 ## 동작 방식
