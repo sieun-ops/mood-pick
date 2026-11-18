@@ -127,3 +127,14 @@ test("Vercel 함수: GET은 405, 키 없음은 500 JSON", async () => {
   assert.ok(r2.body.error);
   if (saved !== undefined) process.env.HASA_API_KEY = saved;
 });
+
+test("원인 코드: 공백 섞인 키는 정리, 가려진 키·403은 코드로 구분", async () => {
+  let auth;
+  const f = async (u, o) => { auth = o.headers.Authorization; return reply(GOOD)(); };
+  await recommend(input, { env: { HASA_API_KEY: "  test-key \n" }, fetchImpl: f });
+  assert.equal(auth, "Bearer test-key");
+  clearCache();
+  await assert.rejects(recommend(input, { env: { HASA_API_KEY: "sk-dev-…" }, fetchImpl: reply(GOOD) }), { code: "KEY_MASKED" });
+  await assert.rejects(recommend(input, { env: ENV, fetchImpl: reply("", 403) }), { status: 500, code: "HASA_403" });
+  await assert.rejects(recommend(input, { env: {}, fetchImpl: reply(GOOD) }), { code: "NO_KEY" });
+});
